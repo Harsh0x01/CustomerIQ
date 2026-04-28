@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>CustomerIQ — System Architecture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0A0A0A;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 0;
+  }
+
+  .canvas {
+    width: 1920px;
+    min-height: 1080px;
+    background: #0A0A0A;
+    position: relative;
+    padding: 60px 80px 60px 80px;
+  }
+
+  /* ── Header ── */
+  .header {
+    margin-bottom: 50px;
+  }
+  .header-label {
+    font-size: 14px;
+    letter-spacing: 0.25em;
+    color: #5B4FE9;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .header-title {
+    font-size: 28px;
+    color: #FFFFFF;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  .header-sub {
+    font-size: 14px;
+    color: #444;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Layer Sections ── */
+  .layer {
+    margin-bottom: 20px;
+  }
+  .layer-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .layer-number {
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    color: #5B4FE9;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-right: 16px;
+    white-space: nowrap;
+  }
+  .layer-line {
+    flex: 1;
+    height: 1px;
+    background: #1E1E1E;
+  }
+
+  /* ── Grid ── */
+  .row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 16px;
+  }
+
+  /* ── Component Boxes ── */
+  .component {
+    border: 1px solid #1E1E1E;
+    background: #0D0D0D;
+    padding: 24px 28px;
+    flex: 1;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .component-name {
+    font-size: 18px;
+    color: #FFFFFF;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 0.01em;
+    margin-bottom: 12px;
+  }
+  .component-detail {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.7;
+    flex: 1;
+  }
+  .badges {
+    margin-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .badge {
+    font-size: 11px;
+    color: #5B4FE9;
+    border: 1px solid #252040;
+    padding: 3px 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  /* ── Endpoint Rows ── */
+  .endpoint {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .method {
+    font-size: 10px;
+    padding: 2px 6px;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    border-radius: 1px;
+  }
+  .m-get  { color: #3ECF8E; border: 1px solid #1A3D2A; }
+  .m-post { color: #F0B429; border: 1px solid #3D3218; }
+  .m-del  { color: #FF4B4B; border: 1px solid #3D1818; }
+
+  /* ── Arrow Connector Row ── */
+  .connectors-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 16px;
+    height: 36px;
+  }
+  .connector-cell {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .arrow-down {
+    width: 1px;
+    height: 100%;
+    background: #1E1E1E;
+    position: relative;
+  }
+  .arrow-down::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -4px;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 6px solid #333;
+  }
+  .arrow-label {
+    font-size: 11px;
+    color: #333;
+    position: absolute;
+    right: calc(50% - 50px);
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Watermarks ── */
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+  }
+  .watermark {
+    font-size: 12px;
+    color: #222;
+    letter-spacing: 0.1em;
+  }
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <!-- ═══════════════════════════════════════ HEADER ═══════════════════════════════════════ -->
+  <div class="header">
+    <div class="header-label">System Architecture</div>
+    <div class="header-title">CustomerIQ -- AI Customer Intelligence Platform</div>
+    <div class="header-sub">Full-Stack Decision Intelligence Engine  |  14 Endpoints  |  7 Modules  |  2 ML Models</div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ LAYER 1: FRONTEND ═══════════════════════════ -->
+  <div class="layer">
+    <div class="layer-header">
+      <span class="layer-number">01 Frontend Layer</span>
+      <div class="layer-line"></div>
+    </div>
+    <div class="row">
+      <div class="component">
+        <div>
+          <div class="component-name">Multi-Page Application</div>
+          <div class="component-detail">
+            Dashboard  |  Upload Data  |  Churn Prediction<br>
+            Customer Segments  |  Feature Importance<br>
+            Customer Explorer  |  Model Management
+          </div>
+        </div>
+        <div class="badges">
+          <span class="badge">Streamlit</span>
+          <span class="badge">7 Pages</span>
+        </div>
+      </div>
+      <div class="component">
+        <div>
+          <div class="component-name">Shared Utilities</div>
+          <div class="component-detail">
+            api.py -- REST client with Bearer tokens<br>
+            charts.py -- Plotly gauge, bar, donut, scatter<br>
+            auth.py -- Supabase login / signup / session<br>
+            sidebar.py -- Navigation + connectivity probe
+          </div>
+        </div>
+        <div class="badges">
+          <span class="badge">Plotly</span>
+          <span class="badge">Requests</span>
+        </div>
+      </div>
+      <div class="component">
+        <div>
+          <div class="component-name">Design System</div>
+          <div class="component-detail">
+            Dark mode base: #0A0A0A<br>
+            Accent: Electric Indigo #5B4FE9<br>
+            Typography: IBM Plex Mono + DM Sans<br>
+            Custom CSS tokens, zero-radius aesthetic
+          </div>
+        </div>
+        <div class="badges">
+          <span class="badge">Google Fonts</span>
+          <span class="badge">Custom CSS</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Arrow connectors -->
+  <div class="connectors-row">
+    <div class="connector-cell"><div class="arrow-down"></div><span class="arrow-label">HTTP / REST</span></div>
+    <div class="connector-cell"><div class="arrow-down"></div><span class="arrow-label">JSON</span></div>
+    <div class="connector-cell"><div class="arrow-down"></div></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ LAYER 2: BACKEND ════════════════════════════ -->
+  <div class="layer">
+    <div class="layer-header">
+      <span class="layer-number">02 Backend Layer</span>
+      <div class="layer-line"></div>
+    </div>
+    <div class="row">
+      <div class="component">
+        <div>
+          <div class="component-name">/customers Router</div>
+          <div class="endpoint"><span class="method m-get">GET</span> /customers/stats</div>
+          <div class="endpoint"><span class="method m-get">GET</span> /customers/ (paginated, filterable)</div>
+          <div class="endpoint"><span class="method m-get">GET</span> /customers/{customer_id}</div>
+          <div class="endpoint"><span class="method m-del">DEL</span> /customers/all</div>
+        </div>
+        <div class="badges">
+          <span class="badge">SQLAlchemy</span>
+          <span class="badge">Pydantic-V2</span>
+        </div>
+      </div>
+      <div class="component">
+        <div>
+          <div class="component-name">/predict Router</div>
+          <div class="endpoint"><span class="method m-post">POST</span> /predict/train</div>
+          <div class="endpoint"><span class="method m-post">POST</span> /predict/ (single)</div>
+          <div class="endpoint"><span class="method m-post">POST</span> /predict/batch</div>
+          <div class="endpoint"><span class="method m-get">GET</span> /predict/recommendations/{id}</div>
+          <div class="endpoint"><span class="method m-get">GET</span> /predict/shap  |  /segments</div>
+        </div>
+        <div class="badges">
+          <span class="badge">FastAPI</span>
+          <span class="badge">SlowAPI</span>
+        </div>
+      </div>
+      <div class="component">
+        <div>
+          <div class="component-name">Infrastructure Services</div>
+          <div class="endpoint"><span class="method m-post">POST</span> /upload/csv (schema validation)</div>
+          <div class="endpoint"><span class="method m-get">GET</span> /health (DB connectivity probe)</div>
+          <div class="endpoint"><span class="method m-get">GET</span> / (platform metadata)</div>
+          <div class="component-detail" style="margin-top: 10px;">
+            Structured JSON Logging | Global Error Handler<br>
+            CORS Lockdown | Rate Limiting (slowapi)
+          </div>
+        </div>
+        <div class="badges">
+          <span class="badge">Uvicorn</span>
+          <span class="badge">JWT Auth</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Arrow connectors -->
+  <div class="connectors-row">
+    <div class="connector-cell"><div class="arrow-down"></div><span class="arrow-label">DataFrame</span></div>
+    <div class="connector-cell"><div class="arrow-down"></div></div>
+    <div class="connector-cell"><div class="arrow-down"></div><span class="arrow-label">Metrics</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ LAYER 3: ML ENGINE ══════════════════════════ -->
+  <div class="layer">
+    <div class="layer-header">
+      <span class="layer-number">03 ML Engine</span>
+      <div class="layer-line"></div>
+    </div>
+    <div class="row">
+      <div class="component">
+        <div>
+          <div class="component-name">Churn Prediction Engine</div>
+          <div class="component-detail">
+            Binary Classification (Exited 0 | 1)<br>
+            Features: age, gender, tenure, balance,<br>
+            num_products, has_credit_card,<br>
+            is_active_member, estimated_salary
+          </div>
+        </div>
+        <div class="badges">
+          <span class="badge">XGBoost</span>
+          <span class="badge">scikit-learn</span>
+        </div>
+      </div>
+      <div class="component">
+        <div>
+          <div class="component-name">Explainability + Strategy</div>
+          <div class="component-detail">
+            Global SHAP: dataset-level feature weights<br>
+            Local SHAP: row-level churn drivers<br>
+            StrategyAdvisor: maps statistical drivers<br>
+            to formal business recovery directives
+          </div>
+        </div>
+        <div class="badges">
+          <span class="badge">SHAP</span>
+          <span class="badge">Prescriptive AI</span>
+        </div>
+      </div>
+      <div class="component">
+        <div>
+          <div class="component-name">Model Registry + Segmentation</div>
+          <div class="component-detail">
+            MLflow: experiment tracking, artifact storage,<br>
+            version activation, production rollback<br>
+            KMeans: behavioral clustering into value tiers<br>
+            (Premium, High Value, Mid Value, Low Value)
+          </div>
+        </div>
+        <div class="badges">
+          <span class="badge">MLflow</span>
+          <span class="badge">KMeans</span>
+          <span class="badge">Joblib</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Arrow connectors -->
+  <div class="connectors-row">
+    <div class="connector-cell"><div class="arrow-down"></div></div>
+    <div class="connector-cell"><div class="arrow-down"></div><span class="arrow-label">SQL / JWT</span></div>
+    <div class="connector-cell"><div class="arrow-down"></div><span class="arrow-label">Artifacts</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ LAYER 4: DATA ═══════════════════════════════ -->
+  <div class="layer">
+    <div class="layer-header">
+      <span class="layer-number">04 Data Layer</span>
+      <div class="layer-line"></div>
+    </div>
+    <div class="row">
+      <div class="component" style="min-height: 110px;">
+        <div>
+          <div class="component-name">Primary Datastore</div>
+          <div class="component-detail">
+            Table: customers (10 columns, indexed)<br>
+            Schema: demographic + behavioral + financial + target
+          </div>
+        </div>
+        <div class="badges">
+          <span class="badge">PostgreSQL</span>
+          <span class="badge">Supabase</span>
+        </div>
+      </div>
+      <div class="component" style="min-height: 110px;">
+        <div>
+          <div class="component-name">Authentication Provider</div>
+          <div class="component-detail">
+            Supabase GoTrue API (JWT tokens)<br>
+            Session persistence via access_token
+          </div>
+        </div>
+        <div class="badges">
+          <span class="badge">JWT</span>
+          <span class="badge">GoTrue</span>
+        </div>
+      </div>
+      <div class="component" style="min-height: 110px;">
+        <div>
+          <div class="component-name">Artifact Storage</div>
+          <div class="component-detail">
+            MLflow SQLite DB (mlflow.db)<br>
+            Model binaries: churn_model.joblib, shap_explainer.joblib
+          </div>
+        </div>
+        <div class="badges">
+          <span class="badge">SQLite</span>
+          <span class="badge">Local FS</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ FOOTER ══════════════════════════════════════ -->
+  <div class="footer">
+    <div class="watermark">Harsh V. Sahu</div>
+    <div class="watermark">CustomerIQ v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>
