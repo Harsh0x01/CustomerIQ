@@ -6,6 +6,11 @@ class ChurnPredictionInput(BaseModel):
     Schema for a single churn prediction.
     Enforces strict typing and domain-level validation.
     """
+    customer_id: Optional[str] = Field(
+        None,
+        max_length=128,
+        description="Optional customer identifier used for the audit trail",
+    )
     age: int = Field(..., ge=18, le=100, description="Customer age")
     gender: str = Field(..., pattern="^(Male|Female|Other)$", description="Customer gender")
     tenure: int = Field(..., ge=0, le=50, description="Years with the bank")
@@ -38,3 +43,8 @@ class TrainingMetrics(BaseModel):
     train_size: int
     test_size: int
     run_id: Optional[str]
+
+
+class IntelligenceQuery(BaseModel):
+    """Natural-language query for the intelligence module."""
+    query: str = Field(..., min_length=1, max_length=1000, description="Free-text analysis question")

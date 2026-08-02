@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pythonjsonlogger import jsonlogger
 from sqlalchemy.sql import text
 
-from backend.routers import upload, predict, customers
+from backend.routers import upload, predict, customers, intelligence
 from backend.database import engine, get_db
 from backend import models
 from backend.config import settings
@@ -16,6 +16,7 @@ from backend.limiter import setup_rate_limiting
 
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
+from fastapi_cache.backends.inmemory import InMemoryBackend
 from redis import asyncio as aioredis
 
 # ── Structured JSON Logging ──────────────────────────────────
@@ -56,7 +57,9 @@ async def lifespan(app: FastAPI):
         FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
         logger.info("✅ Redis caching initialized.")
     except Exception as e:
-        logger.error("❌ Redis initialization failed", extra={"error": str(e)})
+        # Fall back to an in-process cache so the API stays usable without Redis
+        logger.warning("⚠️ Redis unavailable — falling back to in-memory cache.", extra={"error": str(e)})
+        FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
 
     # Schema management is now handled via Alembic migrations.
     
@@ -103,6 +106,7 @@ v1_router = APIRouter(prefix="/api/v1")
 v1_router.include_router(customers.router, prefix="/customers", tags=["Customers"])
 v1_router.include_router(upload.router,    prefix="/upload",    tags=["Upload"])
 v1_router.include_router(predict.router,   prefix="/predict",   tags=["Predict"])
+v1_router.include_router(intelligence.router, prefix="/intelligence", tags=["Intelligence"])
 
 @v1_router.get("/health", tags=["Meta"])
 def health_check(db=Depends(get_db)):

@@ -14,7 +14,7 @@ Built this to solve a real problem: most businesses react to churn *after* it ha
 ## Architecture
 
 ```
-Frontend (Streamlit)  →  Backend API (FastAPI)  →  PostgreSQL (Supabase)
+Frontend (React/Vite) →  Backend API (FastAPI)  →  PostgreSQL (Supabase)
                               ↓
                          ML Engine (XGBoost/SHAP/KMeans)
                               ↓
@@ -30,9 +30,9 @@ The backend is versioned (`/api/v1/`) with JWT auth, rate limiting, and structur
 | API | FastAPI, Uvicorn, Pydantic v2 |
 | DB | PostgreSQL (Supabase), SQLAlchemy, Alembic |
 | ML | XGBoost, SHAP, scikit-learn |
-| Frontend | Streamlit, Plotly |
+| Frontend | React 18 + Vite (Tailwind, Recharts, Three.js) |
 | Infra | Docker Compose, Nginx, Redis, Celery |
-| Auth | Supabase JWT (HS256) |
+| Auth | Supabase JWT (ES256/RS256 via JWKS, HS256 fallback) |
 
 ## Project layout
 
@@ -40,22 +40,31 @@ The backend is versioned (`/api/v1/`) with JWT auth, rate limiting, and structur
 backend/
   main.py           — app setup, lifespan, middleware
   config.py         — pydantic-settings config
-  auth.py           — JWT verification
+  auth.py           — Supabase JWT verification (JWKS)
   models.py         — SQLAlchemy ORM
+  caching.py        — per-user cache key builder
   routers/
     customers.py    — CRUD, stats, filtering
     upload.py       — CSV ingestion
     predict.py      — train/predict/shap/segment endpoints
+    intelligence.py — natural-language analysis + briefs
 
 ml/
   churn.py          — XGBoost training + SHAP
   segment.py        — KMeans clustering
   clv.py            — lifetime value estimation
 
-frontend/
-  app.py            — entry point + auth
-  pages/            — 8 modules (dashboard, upload, prediction, segments, etc)
-  utils/            — API client, charts, styling
+frontend/                 — React + Vite app
+  src/
+    pages/                — dashboard, upload, segments, intelligence, etc.
+    services/api.js       — typed API client
+
+data/
+  customers.csv           — sample dataset for uploads/demos
+
+tests/
+  test_api.py             — backend test suite (auth, upload, predict, segments)
+  conftest.py             — fixtures + dependency overrides
 ```
 
 ## Running locally
@@ -69,18 +78,19 @@ pip install -r requirements.txt
 
 # config
 cp .env.example .env
-# fill in DATABASE_URL, SUPABASE_JWT_SECRET, REDIS_URL
+# fill in DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY,
+# SUPABASE_JWT_SECRET, REDIS_URL. Keep ALLOW_DEMO_TOKEN=false in production.
 
 # run
 uvicorn backend.main:app --reload --port 8000   # backend
 celery -A backend.tasks worker --loglevel=info   # worker
-streamlit run frontend/app.py                    # frontend
+cd frontend && npm install && npm run dev        # React frontend
 ```
 
 Or just `.\run_all.ps1` on Windows — it launches everything.
 
 Backend: http://localhost:8000 (docs at `/docs`)
-Frontend: http://localhost:8501
+Frontend: http://localhost:5173
 
 ## API
 
@@ -93,7 +103,13 @@ POST /api/v1/predict/train               — train XGBoost model
 GET  /api/v1/predict/churn               — run predictions
 GET  /api/v1/predict/shap                — feature importance (SHAP values)
 GET  /api/v1/predict/segments?n_clusters=4  — KMeans clustering
+POST /api/v1/intelligence/query             — natural-language analysis
+POST /api/v1/intelligence/brief             — automated executive brief
 ```
+
+All endpoints under `/api/v1` require a `Bearer` JWT from Supabase. A
+`dummy-token` bypass exists for local dev only and is disabled by default
+(`ALLOW_DEMO_TOKEN=false`).
 
 ## Docker
 
@@ -101,7 +117,8 @@ GET  /api/v1/predict/segments?n_clusters=4  — KMeans clustering
 docker-compose up --build -d
 ```
 
-Spins up backend, frontend, and Redis. Nginx config included for production reverse proxy.
+Spins up Postgres, backend (migrations run automatically via `alembic upgrade
+head`), Celery, Redis, React frontend, and Nginx reverse proxy (port 80).
 
 ## Frontend modules
 
@@ -113,11 +130,12 @@ Spins up backend, frontend, and Redis. Nginx config included for production reve
 6. **Customer Explorer** — multi-filter search, card/table view, merged churn scores
 7. **Model Management** — versioning, retraining, performance tracking
 8. **Retention Analysis** — cohort analysis, churn trends
+9. **Intelligence** — natural-language analysis and executive briefs
 
 ## Design decisions
 
 - **Why XGBoost over deep learning?** — Tabular customer data. Gradient boosting consistently outperforms neural nets on structured data this size. Plus SHAP integrates natively with tree models.
-- **Why Streamlit?** — Fast iteration for data-heavy dashboards. Not building a SaaS product, building an analytics tool. Streamlit fits.
+- **Why React + Vite?** — The canonical product UI. Fast HMR, typed API client, and richer interactive visualizations (Recharts, Three.js) than the legacy Streamlit prototype.
 - **Why Supabase?** — Managed Postgres with built-in auth. No infra overhead for a project this scope. Easy to swap for self-hosted PG if needed.
 - **API versioning from day one** — `/api/v1/` prefix. Makes it possible to iterate on the API without breaking existing integrations.
 
@@ -126,7 +144,9 @@ Spins up backend, frontend, and Redis. Nginx config included for production reve
 - `.env` is gitignored. Use `.env.example` as template.
 - Rate limiting is set to 20 req/min — adjust `RATE_LIMIT_PER_MINUTE` in config.
 - Logs can be switched to JSON format (`LOG_JSON=true`) for production log aggregation.
+- `ALLOW_DEMO_TOKEN` enables a `dummy-token` auth bypass for local development only — never enable it in production.
 - `ec2_setup.sh` included if you want to deploy on AWS.
+- Run the backend test suite with `python -m pytest tests -q`.
 
 ---
 

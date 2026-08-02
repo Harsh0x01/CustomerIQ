@@ -219,38 +219,81 @@ def train_model(df: pd.DataFrame, params: dict = None, use_optuna: bool = False)
     }
 
 
+def _json_safe(value):
+    """Recursively coerce numpy/pandas types into JSON-serializable values."""
+    import numpy as np
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        return float(value)
+    if isinstance(value, np.bool_):
+        return bool(value)
+    if hasattr(value, "item") and not isinstance(value, (str, bytes)):
+        try:
+            return value.item()
+        except Exception:
+            pass
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    return str(value)
+
+
 def get_model_runs():
-    """Retrieve all historical MLflow runs for the experiment."""
+    """Retrieve all historical MLflow runs for the experiment (JSON-safe)."""
     runs = mlflow.search_runs(experiment_names=["churn_prediction"])
-    # Convert to list of dicts for API response
-    if runs.empty:
+    if runs is None or runs.empty:
         return []
-    
+
     # Sort by start_time descending
     runs = runs.sort_values(by="start_time", ascending=False)
-    return runs.to_dict(orient="records")
+    return [_json_safe(r) for r in runs.to_dict(orient="records")]
+
+
+def get_active_model_version() -> str:
+    """Return the version tag of the most recent training run."""
+    try:
+        runs = mlflow.search_runs(experiment_names=["churn_prediction"])
+        if runs is not None and not runs.empty:
+            runs = runs.sort_values(by="start_time", ascending=False)
+            version = runs.iloc[0].get("tags.version")
+            if version:
+                return str(version).strip('"')
+    except Exception as e:
+        logger.warning(f"Failed to resolve active model version: {e}")
+    return "2.0-masterpiece"
 
 
 def activate_model_version(run_id: str):
     """Roll back/activate a specific model version from an MLflow run."""
     global model, explainer
-    
-    # Download artifacts from MLflow
-    # Note: Using local file storage paths for artifacts in this implementation
+
     run = mlflow.get_run(run_id)
-    artifact_uri = run.info.artifact_uri
-    
-    # Simple logic to copy artifacts back to the active /models directory
-    # In a production env, we'd use mlflow.xgboost.load_model
-    model_src = os.path.join(artifact_uri, "churn_model.joblib").replace("file:///", "")
-    explainer_src = os.path.join(artifact_uri, "shap_explainer.joblib").replace("file:///", "")
-    
+    if run is None:
+        return False
+
+    try:
+        # Download artifacts to a local temp dir (handles file:// and
+        # cloud stores cross-platform via MLflow's artifact layer).
+        artifact_dir = mlflow.artifacts.download_artifacts(run_id=run_id)
+    except Exception as e:
+        logger.error(f"Failed to download artifacts for run {run_id}: {e}")
+        return False
+
+    model_src = os.path.join(artifact_dir, "churn_model.joblib")
+    explainer_src = os.path.join(artifact_dir, "shap_explainer.joblib")
+
     if os.path.exists(model_src):
         import shutil
         shutil.copy(model_src, MODEL_PATH)
         if os.path.exists(explainer_src):
             shutil.copy(explainer_src, EXPLAINER_PATH)
-        
+
         # Reload singletons
         load_model_if_exists()
         return True

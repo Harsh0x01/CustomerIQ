@@ -15,11 +15,18 @@ class Settings(BaseSettings):
     # Required for caching and Celery
     REDIS_URL: str = Field("redis://localhost:6379/0", description="Redis connection URL for caching/tasks")
     
-    # ── Security ────────────────────────────────────────────────
-    # Required: Supabase JWT Secret for token validation
+    # ── Supabase ────────────────────────────────────────────────
+    # Required: JWT Secret for HS256 token validation
     SUPABASE_JWT_SECRET: str = Field(..., description="JWT Secret from Supabase API settings")
+    SUPABASE_URL: str = Field("", description="Supabase project URL (used to fetch JWKS for ES256/RS256 tokens)")
+    SUPABASE_ANON_KEY: str = Field("", description="Supabase anon/publishable key")
     JWT_ALGORITHM: str = "HS256"
-    
+
+    # ── Auth Bypass (Local Development Only) ────────────────────
+    # Enables the hard-coded "dummy-token" bypass used by the offline dev flows.
+    # MUST stay False in any production deployment.
+    ALLOW_DEMO_TOKEN: bool = False
+
     # ── App Metadata ────────────────────────────────────────────
     APP_NAME: str = "CustomerIQ"
     APP_VERSION: str = "1.0.0"
@@ -27,7 +34,7 @@ class Settings(BaseSettings):
     
     # ── CORS ────────────────────────────────────────────────────
     # Default to localhost for development, can be csv for production
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8000,http://localhost:8501"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:8000,http://localhost:8501"
     
     # ── Rate Limiting ───────────────────────────────────────────
     RATE_LIMIT_PER_MINUTE: int = 20

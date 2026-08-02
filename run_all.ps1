@@ -11,8 +11,8 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location $PSS
 Write-Host "  -> Starting Celery Worker" -ForegroundColor Green
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location $PSScriptRoot; & .\.venv\Scripts\celery.exe -A backend.tasks worker --loglevel=info -P solo"
 
-# 3. Start Frontend (Streamlit)
-Write-Host "  -> Starting Frontend on http://localhost:8501" -ForegroundColor Green
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location $PSScriptRoot; & .\.venv\Scripts\streamlit.exe run frontend/app.py"
+# 3. Start Frontend (React / Vite)
+Write-Host "  -> Starting React Frontend on http://localhost:5173" -ForegroundColor Green
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location $PSScriptRoot\frontend; npm run dev"
 
 Write-Host "✅ All services initiated. Check the new windows for logs." -ForegroundColor Green

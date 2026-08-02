@@ -20,6 +20,10 @@ venv/
 env/
 .venv/
 
+# Local runtime state
+customeriq.db
+*.db
+
 # Trained ML models (reproducible via training)
 models/
 *.joblib
@@ -35,9 +39,6 @@ mlruns/
 *.swp
 *.swo
 
-# Streamlit
-.streamlit/secrets.toml
-
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
@@ -52,9 +53,7 @@ logs/
 
 # Temp files
 tmp/
-check_db_temp.py
-create_demo_user.py
-test_login.py
+.pytest_cache/
 
 # Large image files (mockups)
 *.png

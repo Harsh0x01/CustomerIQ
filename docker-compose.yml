@@ -1,6 +1,23 @@
-version: '3.8'
-
 services:
+  # ── Database: PostgreSQL ─────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: customeriq_postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=customeriq
+      - POSTGRES_PASSWORD=customeriq
+      - POSTGRES_DB=customeriq
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U customeriq -d customeriq"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - customeriq_net
+
   # ── Backend: FastAPI ────────────────────────────────────────
   backend:
     build:
@@ -11,13 +28,17 @@ services:
     env_file: .env
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://customeriq:customeriq@postgres:5432/customeriq
     # No public ports exposed directly
     volumes:
       - ./models:/app/models
       - ./data:/app/data
       - ./mlruns:/app/mlruns
     depends_on:
-      - redis
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
@@ -37,11 +58,13 @@ services:
     env_file: .env
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://customeriq:customeriq@postgres:5432/customeriq
     volumes:
        - ./models:/app/models
        - ./mlruns:/app/mlruns
     depends_on:
       - redis
+      - postgres
     networks:
       - customeriq_net
 
@@ -52,15 +75,18 @@ services:
     networks:
       - customeriq_net
 
-  # ── Frontend: Streamlit ─────────────────────────────────────
+  # ── Frontend: React (Vite build served by Nginx) ─────────────
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: /api/v1
+        VITE_ENABLE_DEMO_FALLBACK: "false"
     container_name: customeriq_frontend
     restart: always
-    env_file: .env
-    # No public ports exposed directly
+    expose:
+      - "80"
     depends_on:
       backend:
         condition: service_healthy
@@ -85,3 +111,6 @@ services:
 networks:
   customeriq_net:
     driver: bridge
+
+volumes:
+  postgres_data:

@@ -6,6 +6,7 @@ from backend import models
 from typing import Optional
 import logging
 from backend.auth import get_current_user
+from backend.caching import user_aware_key_builder
 from fastapi_cache.decorator import cache
 
 router = APIRouter()
@@ -13,7 +14,7 @@ logger = logging.getLogger("customeriq.customers")
 
 
 @router.get("/stats")
-@cache(expire=300)
+@cache(expire=300, key_builder=user_aware_key_builder)
 def get_stats(db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
     """High-level platform statistics — Single-pass production optimization."""
     try:
@@ -116,7 +117,7 @@ def delete_all_customers(db: Session = Depends(get_db), user: dict = Depends(get
 
 
 @router.get("/audit/logs")
-@cache(expire=60)
+@cache(expire=60, key_builder=user_aware_key_builder)
 def get_audit_logs(limit: int = Query(10, ge=1, le=100), db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
     """Fetch chronological platform action logs."""
     logs = db.query(models.AuditLog).order_by(models.AuditLog.created_at.desc()).limit(limit).all()
